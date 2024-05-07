@@ -1,6 +1,6 @@
-# enable-acme.sh
+# GL.iNet Enable ACME for DDNS
 
-## Description
+<img src="images/screen.jpg" width="400" align="right" alt="Profile Picture" style="border-radius: 10%;">
 
 The `enable-acme.sh` script enables the Automated Certificate Management Environment (ACME) for GL.iNet routers.
 It will request a certificate for the router's public IP and configure nginx to use it.
@@ -21,7 +21,7 @@ To execute the script, the following prerequisites must be met:
 You can run it without cloning the repository by using the following command:
 
 ```shell
-wget -O enable-acme.sh https://raw.githubusercontent.com/Admonstrator/glinet.forum/main/scripts/enable-acme/enable-acme.sh && sh enable-acme.sh
+wget -O enable-acme.sh https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh && sh enable-acme.sh
 ```
 
 The following steps are required to enable ACME using the script:
