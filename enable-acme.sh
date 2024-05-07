@@ -53,7 +53,7 @@ open_firewall() {
         log "INFO" "Disabling firewall rule to open port 80 on WAN ..."
         uci set firewall.acme.enabled='0'
     fi
-    echo "Restarting firewall ..."
+    log "INFO" "Restarting firewall ..."
     /etc/init.d/firewall restart 2&>/dev/null
     uci commit firewall
 }
