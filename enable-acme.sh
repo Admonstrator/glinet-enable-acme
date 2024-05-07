@@ -11,6 +11,11 @@ SCRIPT_VERSION="2024.05.07.01"
 # Usage: ./enable-acme.sh [--renew]
 # Warning: This script might potentially harm your router. Use it at your own risk.
 #
+# Variables
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+INFO='\033[0m' # No Color
 
 # Functions
 create_acme_config() {
