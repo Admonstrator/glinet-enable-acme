@@ -2,11 +2,11 @@
 # shellcheck shell=dash
 #
 # Description: This script enables ACME support on GL.iNet routers
-# Thread: https://forum.gl-inet.com/t/is-there-a-way-to-get-a-letsencrypt-certificate-for-the-factory-ddns-on-the-mt6000/
+# Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
 # Update: 2024-05-07
 # Date: 2023-12-27
-SCRIPT_VERSION="2024.05.07.02"
+SCRIPT_VERSION="2024.05.07.04"
 #
 # Usage: ./enable-acme.sh [--renew]
 # Warning: This script might potentially harm your router. Use it at your own risk.
@@ -20,11 +20,11 @@ INFO='\033[0m' # No Color
 # Functions
 create_acme_config() {
     # Delete old ACME configuration file
-    log "INFO" "Deleting old ACME configuration file for $DDNS_DOMAIN_PREFIX ..."
+    log "INFO" "Deleting old ACME configuration file for $DDNS_DOMAIN_PREFIX"
     uci delete acme.$DDNS_DOMAIN_PREFIX
     uci commit acme
     # Create new ACME configuration file
-    log "INFO" "Creating ACME configuration file ..."
+    log "INFO" "Creating ACME configuration file"
     uci set acme.@acme[0]=acme
     uci set acme.@acme[0].account_email='acme@glddns.com'
     uci set acme.@acme[0].debug='1'
@@ -41,7 +41,7 @@ create_acme_config() {
 
 open_firewall() {
     if [ "$1" -eq 1 ]; then
-        log "INFO" "Creating firewall rule to open port 80 on WAN ..."
+        log "INFO" "Creating firewall rule to open port 80 on WAN"
         uci set firewall.acme=rule
         uci set firewall.acme.dest_port='80'
         uci set firewall.acme.proto='tcp'
@@ -50,10 +50,10 @@ open_firewall() {
         uci set firewall.acme.src='wan'
         uci set firewall.acme.enabled='1'
     else
-        log "INFO" "Disabling firewall rule to open port 80 on WAN ..."
+        log "INFO" "Disabling firewall rule to open port 80 on WAN"
         uci set firewall.acme.enabled='0'
     fi
-    log "INFO" "Restarting firewall ..."
+    log "INFO" "Restarting firewall"
     /etc/init.d/firewall restart 2&>/dev/null
     uci commit firewall
 }
@@ -61,7 +61,7 @@ open_firewall() {
 preflight_check() {
     FIRMWARE_VERSION=$(cut -c1 </etc/glversion)
     PREFLIGHT=0
-    log "INFO" "Checking if prerequisites are met ..."
+    log "INFO" "Checking if prerequisites are met"
     if [ "${FIRMWARE_VERSION}" -lt 4 ]; then
         log "ERROR" "This script only works on firmware version 4 or higher."
         PREFLIGHT=1
@@ -102,7 +102,7 @@ preflight_check() {
     fi
 
     if [ "$PREFLIGHT" -eq "1" ]; then
-        log "ERROR" "Prerequisites are not met. Exiting ..."
+        log "ERROR" "Prerequisites are not met. Exiting"
         exit 1
     else
         log "SUCCESS" "Prerequisites are met."
@@ -126,42 +126,42 @@ invoke_intro() {
 }
 
 install_prequisites() {
-    log "INFO" "Installing luci-app-acme ..."
+    log "INFO" "Installing luci-app-acme"
     opkg update >/dev/null 2>&1
     opkg install luci-app-acme --force-depends >/dev/null 2>&1
 }
 
 config_nginx() {
     if [ "$1" -eq 1 ]; then
-        log "INFO" "Disabling HTTP access to the router ..."
+        log "INFO" "Disabling HTTP access to the router"
         # Commenting out the HTTP line in nginx.conf
         sed -i 's/listen 80;/#listen 80;/g' /etc/nginx/conf.d/gl.conf
         # Same for IPv6
         sed -i 's/listen \[::\]:80;/#listen \[::\]:80;/g' /etc/nginx/conf.d/gl.conf
     else
-        log "INFO" "Enabling HTTP access to the router ..."
+        log "INFO" "Enabling HTTP access to the router"
         # Uncommenting the HTTP line in nginx.conf
         sed -i 's/#listen 80;/listen 80;/g' /etc/nginx/conf.d/gl.conf
         # Same for IPv6
         sed -i 's/#listen \[::\]:80;/listen \[::\]:80;/g' /etc/nginx/conf.d/gl.conf
     fi
-    log "INFO" "Restarting nginx ..."
+    log "INFO" "Restarting nginx"
     /etc/init.d/nginx restart
 
 }
 
 get_acme_cert(){
-    log "INFO" "Restarting acme ..."
+    log "INFO" "Restarting acme"
     /etc/init.d/acme restart
     sleep 5
     /etc/init.d/acme restart
-    log "INFO" "Checking if certificate was issued ..."
+    log "INFO" "Checking if certificate was issued"
     # Wait for 10 seconds
     sleep 10
     # Check if certificate was issued
     if [ -f "/etc/acme/$DDNS_DOMAIN/fullchain.cer" ]; then
         log "SUCCESS" "Certificate was issued successfully."
-        log "INFO" "Installing certificate in nginx ..."
+        log "INFO" "Installing certificate in nginx"
         # Install the certificate in nginx
         # Replace the ssl_certificate line in nginx.conf
         # Replace the whole line, because the path is different
@@ -201,11 +201,11 @@ invoke_outro() {
 
 install_cronjob() {
     # Create cronjob to renew the certificate
-    log "INFO" "Checking if cronjob already exists ..."
+    log "INFO" "Checking if cronjob already exists"
     if crontab -l | grep -q "enable-acme"; then
-        log "WARNING" "Cronjob already exists. Skipping ..."
+        log "WARNING" "Cronjob already exists. Skipping"
     else
-        log "INFO" "Installing cronjob ..."
+        log "INFO" "Installing cronjob"
         install_script
         (crontab -l 2>/dev/null; echo "0 0 * * * /usr/bin/enable-acme --renew ") | crontab -
         log "SUCCESS" "Cronjob installed successfully."
@@ -214,7 +214,7 @@ install_cronjob() {
 
 install_script() {
     # Copying the script to /usr/bin
-    log "INFO" "Copying the script to /usr/bin ..."
+    log "INFO" "Copying the script to /usr/bin"
     cp $0 /usr/bin/enable-acme
     chmod +x /usr/bin/enable-acme
     log "SUCCESS" "Script installed successfully."
@@ -223,14 +223,14 @@ install_script() {
 invoke_renewal(){
     open_firewall 1
     config_nginx 1
-    log "INFO" "Renewing certificate ..."
+    log "INFO" "Renewing certificate"
     /usr/lib/acme/acme.sh --cron --home /etc/acme
     config_nginx 0
     open_firewall 0
 }
 
 make_permanent() {
-    log "INFO" "Modifying /etc/sysupgrade.conf ..."
+    log "INFO" "Modifying /etc/sysupgrade.conf"
     if ! grep -q "/etc/acme" /etc/sysupgrade.conf; then
         echo "/etc/acme" >>/etc/sysupgrade.conf
     fi
@@ -245,7 +245,7 @@ invoke_update() {
      SCRIPT_VERSION_NEW=$(curl -s "https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh" | grep -o 'SCRIPT_VERSION="[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\.[0-9]\{2\}"' | cut -d '"' -f 2 || echo "Failed to retrieve script version")
     if [ "$SCRIPT_VERSION_NEW" != "$SCRIPT_VERSION" ]; then
         echo -e "\033[33mA new version of this script is available: $SCRIPT_VERSION_NEW\033[0m"
-        echo -e "\033[33mThe script will now be updated ...\033[0m"
+        echo -e "\033[33mThe script will now be updated\033[0m"
         wget -qO /tmp/enable-acme.sh "https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
         # Get current script path
         SCRIPT_PATH=$(readlink -f "$0")
@@ -253,7 +253,7 @@ invoke_update() {
         rm "$SCRIPT_PATH"
         mv /tmp/enable-acme.sh "$SCRIPT_PATH"
         chmod +x "$SCRIPT_PATH"
-        echo -e "\033[32mThe script has been updated successfully. It will restart in 3 seconds ...\033[0m"
+        echo -e "\033[32mThe script has been updated successfully. It will restart in 3 seconds\033[0m"
         sleep 3
         exec "$SCRIPT_PATH" "$@"
     else
