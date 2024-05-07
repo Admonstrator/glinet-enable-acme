@@ -193,17 +193,17 @@ invoke_outro() {
         log "SUCCESS" "  /etc/acme/$DDNS_DOMAIN/$DDNS_DOMAIN.key"
         log "SUCCESS" ""
         log "SUCCESS" "The certificate will expire after 90 days."
-        log "SUCCESS" "The cron job to renew the certificate is already installed."
+        log "SUCCESS" "The cronjob to renew the certificate is already installed."
         log "SUCCESS" "Renewal will happen automatically."
         exit 0
     fi
 }
 
 install_cronjob() {
-    # Create cron job to renew the certificate
+    # Create cronjob to renew the certificate
     log "INFO" "Checking if cronjob already exists ..."
     if crontab -l | grep -q "enable-acme"; then
-        log "WARNING" "Cron job already exists. Skipping ..."
+        log "WARNING" "Cronjob already exists. Skipping ..."
     else
         log "INFO" "Installing cronjob ..."
         install_script
