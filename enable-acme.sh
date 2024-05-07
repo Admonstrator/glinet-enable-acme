@@ -6,7 +6,7 @@
 # Author: Admon
 # Update: 2024-05-07
 # Date: 2023-12-27
-SCRIPT_VERSION="2024.05.07.01"
+SCRIPT_VERSION="2024.05.07.02"
 #
 # Usage: ./enable-acme.sh [--renew]
 # Warning: This script might potentially harm your router. Use it at your own risk.
