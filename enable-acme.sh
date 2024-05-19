@@ -4,9 +4,10 @@
 # Description: This script enables ACME support on GL.iNet routers
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
-# Update: 2024-05-07
 # Date: 2023-12-27
-SCRIPT_VERSION="2024.05.07.04"
+SCRIPT_VERSION="2024.05.19.01"
+SCRIPT_NAME="enable-acme.sh"
+UPDATE_URL="https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
 #
 # Usage: ./enable-acme.sh [--renew]
 # Warning: This script might potentially harm your router. Use it at your own risk.
@@ -242,22 +243,23 @@ make_permanent() {
 }
 
 invoke_update() {
-     SCRIPT_VERSION_NEW=$(curl -s "https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh" | grep -o 'SCRIPT_VERSION="[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\.[0-9]\{2\}"' | cut -d '"' -f 2 || echo "Failed to retrieve script version")
-    if [ "$SCRIPT_VERSION_NEW" != "$SCRIPT_VERSION" ]; then
-        echo -e "\033[33mA new version of this script is available: $SCRIPT_VERSION_NEW\033[0m"
-        echo -e "\033[33mThe script will now be updated\033[0m"
-        wget -qO /tmp/enable-acme.sh "https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
-        # Get current script path
-        SCRIPT_PATH=$(readlink -f "$0")
-        # Replace current script with updated script
-        rm "$SCRIPT_PATH"
-        mv /tmp/enable-acme.sh "$SCRIPT_PATH"
-        chmod +x "$SCRIPT_PATH"
-        echo -e "\033[32mThe script has been updated successfully. It will restart in 3 seconds\033[0m"
-        sleep 3
-        exec "$SCRIPT_PATH" "$@"
+    log "INFO" "Checking for script updates"
+    SCRIPT_VERSION_NEW=$(curl -s "$UPDATE_URL" | grep -o 'SCRIPT_VERSION="[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\.[0-9]\{2\}"' | cut -d '"' -f 2 || echo "Failed to retrieve scriptversion")
+    if [ -n "$SCRIPT_VERSION_NEW" ] && [ "$SCRIPT_VERSION_NEW" != "$SCRIPT_VERSION" ]; then
+       log "WARNING" "A new version of the script is available: $SCRIPT_VERSION_NEW"
+       log "INFO" "Updating the script ..."
+       wget -qO /tmp/$SCRIPT_NAME "$UPDATE_URL"
+       # Get current script path
+       SCRIPT_PATH=$(readlink -f "$0")
+       # Replace current script with updated script
+       rm "$SCRIPT_PATH"
+       mv /tmp/$SCRIPT_NAME "$SCRIPT_PATH"
+       chmod +x "$SCRIPT_PATH"
+       log "INFO" "The script has been updated. It will now restart ..."
+       sleep 3
+       exec "$SCRIPT_PATH" "$@"
     else
-        echo -e "\033[32mYou are using the latest version of this script!\033[0m"
+        log "SUCCESS" "The script is up to date"
     fi
 }
 
