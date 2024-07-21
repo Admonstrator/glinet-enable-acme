@@ -13,6 +13,7 @@ To execute the script, the following prerequisites must be met:
 - A GL.iNet router with the latest firmware version.
 - A working internet connection.
 - DDNS must be enabled and configured.
+- Domain name assigned to your router in the format 'xxxxx.glddns.com' which is avaliable in your routers dashboard 
 - DDNS IP must be the same as the router's public IP. Will be checked by the script.
 - The script will request a certificate for the router's public IP. VPN IP is not supported.
 
@@ -21,7 +22,7 @@ To execute the script, the following prerequisites must be met:
 You can run it without cloning the repository by using the following command:
 
 ```shell
-wget -O enable-acme.sh https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh && sh enable-acme.sh
+wget -O enable-acme.sh https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh && sh enable-acme.sh 'xxxxx.glddns.com'
 ```
 
 The following steps are required to enable ACME using the script:
@@ -29,7 +30,7 @@ The following steps are required to enable ACME using the script:
 1. Download the script onto the router.
 2. Open an SSH connection to the router.
 3. Navigate to the directory where the script is located.
-4. Enter the command `sh enable-acme.sh` and press Enter.
+4. Enter the command `sh enable-acme.sh 'xxxxx.glddns.com'` and press Enter.
 5. Follow the on-screen instructions to complete the ACME process.
 
 ## Renewal
@@ -40,7 +41,7 @@ It will check for a renewal every day at 00:00
 You can manually renew the certificate by executing the following command:
 
 ```shell
-/usr/bin/enable-acme --renew
+/usr/bin/enable-acme 'xxxxx.glddns.com' --renew 
 ```
 
 ## Notes
