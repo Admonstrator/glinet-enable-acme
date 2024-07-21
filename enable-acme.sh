@@ -298,8 +298,8 @@ if [ -z "$domain" ]; then
     read -p "Enter the gddns domain of your router: " domain
 else
     echo "The gddns domain of your router is: $domain"
-    DDNS_DOMAIN=$domain
 fi
+DDNS_DOMAIN=$domain
 
 # Check if --renew is used
 if [ "$2" = "--renew" ]; then
