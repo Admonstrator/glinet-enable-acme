@@ -292,14 +292,13 @@ log() {
 
 # Main
 
-# Check if gddns domain of the router is entered for the -domain argument
-domain=$1  # Get the domain from the first command-line argument
-if [ -z "$domain" ]; then
-    read -p "Enter the gddns domain of your router: " domain
+# Check if gddns domain of the router is entered in the first argument
+if [ -z "$1" ]; then
+    read -p "Enter the gddns domain of your router: " DDNS_DOMAIN
 else
-    echo "The gddns domain of your router is: $domain"
+    echo "The gddns domain of your router is: $1"
+    DDNS_DOMAIN=$1
 fi
-DDNS_DOMAIN=$domain
 
 # Check if --renew is used
 if [ "$2" = "--renew" ]; then
