@@ -294,19 +294,11 @@ log() {
 
 # Check if gddns domain of the router is entered in the first argument
 if [ -z "$1" ]; then
-    read -p "Enter the gddns domain of your router: " DDNS_DOMAINS
+    read -p "Enter the gddns domain of your router: " DDNS_DOMAIN
 else
     echo "The gddns domain of your router is: $1"
-    DDNS_DOMAINS=$1
+    DDNS_DOMAIN=$1
 fi
-
-# Split the string into an array using comma as the delimiter
-IFS=',' read -r -a domains_array <<< "$input_string"
-
-# Loop through the array and print each element
-for element in "${domains_array[@]}"
-do
-DDNS_DOMAIN ="$element"
 
 # Check if --renew is used
 if [ "$2" = "--renew" ]; then
@@ -340,5 +332,3 @@ else
     log "SUCCESS" "Ok, see you next time!"
     exit 1
 fi
-
-done
