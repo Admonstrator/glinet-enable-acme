@@ -27,7 +27,7 @@ create_acme_config() {
     # Create new ACME configuration file
     log "INFO" "Creating ACME configuration file"
     uci set acme.@acme[0]=acme
-    uci set acme.@acme[0].account_email='acme@glddns.com'
+    uci set acme.@acme[0].account_email='anudeep.jami@gmail.com'
     uci set acme.@acme[0].debug='1'
     uci set acme.$DDNS_DOMAIN_PREFIX=cert
     uci set acme.$DDNS_DOMAIN_PREFIX.enabled='1'
