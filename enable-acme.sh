@@ -27,7 +27,7 @@ create_acme_config() {
     # Create new ACME configuration file
     log "INFO" "Creating ACME configuration file"
     uci set acme.@acme[0]=acme
-    uci set acme.@acme[0].account_email='acme@glddns.com'
+    uci set acme.@acme[0].account_email='anudeep.jami@gmail.com'
     uci set acme.@acme[0].debug='1'
     uci set acme.$DDNS_DOMAIN_PREFIX=cert
     uci set acme.$DDNS_DOMAIN_PREFIX.enabled='1'
@@ -77,7 +77,6 @@ preflight_check() {
     else
         log "SUCCESS" "Public IP address: $PUBLIC_IP"
     fi
-    DDNS_DOMAIN=$(uci get ddns.glddns.domain)
     DDNS_IP=$(nslookup $DDNS_DOMAIN | sed -n '/Address/s/.*: \(.*\)/\1/p' | grep -v ':')
     if [ -z "$DDNS_IP" ]; then
         log "ERROR" "DDNS IP address not found. Please enable DDNS first."
@@ -292,14 +291,23 @@ log() {
 }
 
 # Main
+
+# Check if gddns domain of the router is entered in the first argument
+if [ -z "$1" ]; then
+    read -p "Enter the gddns domain of your router: " DDNS_DOMAIN
+else
+    echo "The gddns domain of your router is: $1"
+    DDNS_DOMAIN=$1
+fi
+
 # Check if --renew is used
-if [ "$1" = "--renew" ]; then
+if [ "$2" = "--renew" ]; then
     invoke_renewal
     exit 0
 fi
 
 # Check if --change-ports is used
-if [ "$1" = "--change-ports" ]; then
+if [ "$2" = "--change-ports" ]; then
     select_ports
 fi
 
