@@ -1,6 +1,6 @@
-** It seems that the script is not working anymore. A fix is not planned so far. **
+**It seems that the script is not working anymore. A fix is not planned so far.**
 
-** There might be a official documentation on how to enable ACME on GL.iNet routers in near future. **
+**There might be a official documentation on how to enable ACME on GL.iNet routers in near future.**
 
 # GL.iNet Enable ACME for DDNS
 
