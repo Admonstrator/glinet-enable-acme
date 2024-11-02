@@ -5,7 +5,7 @@
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
 # Date: 2023-12-27
-SCRIPT_VERSION="2024.05.19.01"
+SCRIPT_VERSION="2024.11.02.01"
 SCRIPT_NAME="enable-acme.sh"
 UPDATE_URL="https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
 #
@@ -26,16 +26,29 @@ create_acme_config() {
     uci commit acme
     # Create new ACME configuration file
     log "INFO" "Creating ACME configuration file"
-    uci set acme.@acme[0]=acme
-    uci set acme.@acme[0].account_email='acme@glddns.com'
-    uci set acme.@acme[0].debug='1'
-    uci set acme.$DDNS_DOMAIN_PREFIX=cert
-    uci set acme.$DDNS_DOMAIN_PREFIX.enabled='1'
-    uci set acme.$DDNS_DOMAIN_PREFIX.use_staging='0'
-    uci set acme.$DDNS_DOMAIN_PREFIX.keylength='2048'
-    uci set acme.$DDNS_DOMAIN_PREFIX.validation='standalone'
-    uci set acme.$DDNS_DOMAIN_PREFIX.update_nginx='1'
-    uci set acme.$DDNS_DOMAIN_PREFIX.domains="$DDNS_DOMAIN"
+    if [ "$GL_DDNS" -eq 1 ]; then
+        uci set acme.@acme[0]=acme
+        uci set acme.@acme[0].account_email='acme@glddns.com'
+        uci set acme.@acme[0].debug='1'
+        uci set acme.$DDNS_DOMAIN_PREFIX=cert
+        uci set acme.$DDNS_DOMAIN_PREFIX.enabled='1'
+        uci set acme.$DDNS_DOMAIN_PREFIX.use_staging='0'
+        uci set acme.$DDNS_DOMAIN_PREFIX.keylength='2048'
+        uci set acme.$DDNS_DOMAIN_PREFIX.validation_method='standalone'
+        uci set acme.$DDNS_DOMAIN_PREFIX.update_nginx='1'
+        uci set acme.$DDNS_DOMAIN_PREFIX.domains="$DDNS_DOMAIN"
+    else
+        uci set acme.@acme[0]=acme
+        uci set acme.@acme[0].account_email='acme@glddns.com'
+        uci set acme.@acme[0].debug='1'
+        uci set acme.$DDNS_DOMAIN_PREFIX=cert
+        uci set acme.$DDNS_DOMAIN_PREFIX.enabled='1'
+        uci set acme.$DDNS_DOMAIN_PREFIX.use_staging='0'
+        uci set acme.$DDNS_DOMAIN_PREFIX.keylength='2048'
+        uci set acme.$DDNS_DOMAIN_PREFIX.validation='standalone'
+        uci set acme.$DDNS_DOMAIN_PREFIX.update_nginx='1'
+        uci set acme.$DDNS_DOMAIN_PREFIX.domains="$DDNS_DOMAIN"
+    fi
     uci commit acme
     /etc/init.d/acme restart
 }
@@ -55,7 +68,7 @@ open_firewall() {
         uci set firewall.acme.enabled='0'
     fi
     log "INFO" "Restarting firewall"
-    /etc/init.d/firewall restart 2&>/dev/null
+    /etc/init.d/firewall restart 2 &>/dev/null
     uci commit firewall
 }
 
@@ -63,6 +76,7 @@ preflight_check() {
     FIRMWARE_VERSION=$(cut -c1 </etc/glversion)
     PREFLIGHT=0
     log "INFO" "Checking if prerequisites are met"
+
     if [ "${FIRMWARE_VERSION}" -lt 4 ]; then
         log "ERROR" "This script only works on firmware version 4 or higher."
         PREFLIGHT=1
@@ -77,7 +91,20 @@ preflight_check() {
     else
         log "SUCCESS" "Public IP address: $PUBLIC_IP"
     fi
-    DDNS_DOMAIN=$(uci get ddns.glddns.domain)
+    log "INFO" "Trying to find DDNS domain name"
+    DDNS_DOMAIN=$(uci -q get ddns.glddns.domain)
+    if [ -z "$DDNS_DOMAIN" ]; then
+        log "INFO" "Not found in ddns.glddns. Trying gl_ddns.glddns"
+        DDNS_DOMAIN=$(uci -q get gl_ddns.glddns.domain)
+        if [ -z "$DDNS_DOMAIN" ]; then
+            log "ERROR" "DDNS domain name not found. Please enable DDNS first."
+            PREFLIGHT=1
+        fi
+        GL_DDNS=1
+    else
+        log "SUCCESS" "Detected DDNS domain name: $DDNS_DOMAIN"
+    fi
+
     DDNS_IP=$(nslookup $DDNS_DOMAIN | sed -n '/Address/s/.*: \(.*\)/\1/p' | grep -v ':')
     if [ -z "$DDNS_IP" ]; then
         log "ERROR" "DDNS IP address not found. Please enable DDNS first."
@@ -101,29 +128,19 @@ preflight_check() {
     else
         log "SUCCESS" "Public IP matches DDNS IP."
     fi
-
-    if [ "$PREFLIGHT" -eq "1" ]; then
-        log "ERROR" "Prerequisites are not met. Exiting"
-        exit 1
-    else
-        log "SUCCESS" "Prerequisites are met."
-    fi
 }
 
 invoke_intro() {
-    echo "┌────────────────────────────────────────────────────────────────────────┐"
-    echo "│ GL.iNet router script by Admon 🦭 for the GL.iNet community            │"
-    echo "| Version: $SCRIPT_VERSION                                                 |"
-    echo "├────────────────────────────────────────────────────────────────────────┤"
-    echo "│ WARNING: THIS SCRIPT MIGHT POTENTIALLY HARM YOUR ROUTER!               │"
-    echo "│ It's only recommended to use this script if you know what you're doing.│"
-    echo "├────────────────────────────────────────────────────────────────────────┤"
-    echo "│ This script will enable ACME support on your router.                   │"
-    echo "│                                                                        │"
-    echo "│ Prerequisites:                                                         │"
-    echo "│ 1. You need to have the GL DDNS service enabled.                       │"
-    echo "│ 2. The router needs to have a public IPv4 address.                     │"
-    echo "└────────────────────────────────────────────────────────────────────────┘"
+    log "INFO" "GL.iNet router script by Admon 🦭 for the GL.iNet community"
+    log "INFO" "Version: $SCRIPT_VERSION"
+    log "WARNING" "WARNING: THIS SCRIPT MIGHT POTENTIALLY HARM YOUR ROUTER!"
+    log "WARNING" "It's only recommended to use this script if you know what you're doing."
+    log "INFO" "This script will enable ACME support on your router."
+    log "INFO" ""
+    log "INFO" "Prerequisites:"
+    log "INFO" "1. You need to have the GL DDNS service enabled."
+    log "INFO" "2. The router needs to have a public IPv4 address."
+    log "INFO" "────"
 }
 
 install_prequisites() {
@@ -151,7 +168,7 @@ config_nginx() {
 
 }
 
-get_acme_cert(){
+get_acme_cert() {
     log "INFO" "Restarting acme"
     /etc/init.d/acme restart
     sleep 5
@@ -208,7 +225,10 @@ install_cronjob() {
     else
         log "INFO" "Installing cronjob"
         install_script
-        (crontab -l 2>/dev/null; echo "0 0 * * * /usr/bin/enable-acme --renew ") | crontab -
+        (
+            crontab -l 2>/dev/null
+            echo "0 0 * * * /usr/bin/enable-acme --renew "
+        ) | crontab -
         log "SUCCESS" "Cronjob installed successfully."
     fi
 }
@@ -221,7 +241,7 @@ install_script() {
     log "SUCCESS" "Script installed successfully."
 }
 
-invoke_renewal(){
+invoke_renewal() {
     open_firewall 1
     config_nginx 1
     log "INFO" "Renewing certificate"
@@ -235,7 +255,7 @@ make_permanent() {
     if ! grep -q "/etc/acme" /etc/sysupgrade.conf; then
         echo "/etc/acme" >>/etc/sysupgrade.conf
     fi
-    
+
     if ! grep -q "/etc/nginx/conf.d/gl.conf" /etc/sysupgrade.conf; then
         echo "/etc/nginx/conf.d/gl.conf" >>/etc/sysupgrade.conf
     fi
@@ -246,18 +266,18 @@ invoke_update() {
     log "INFO" "Checking for script updates"
     SCRIPT_VERSION_NEW=$(curl -s "$UPDATE_URL" | grep -o 'SCRIPT_VERSION="[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}\.[0-9]\{2\}"' | cut -d '"' -f 2 || echo "Failed to retrieve scriptversion")
     if [ -n "$SCRIPT_VERSION_NEW" ] && [ "$SCRIPT_VERSION_NEW" != "$SCRIPT_VERSION" ]; then
-       log "WARNING" "A new version of the script is available: $SCRIPT_VERSION_NEW"
-       log "INFO" "Updating the script ..."
-       wget -qO /tmp/$SCRIPT_NAME "$UPDATE_URL"
-       # Get current script path
-       SCRIPT_PATH=$(readlink -f "$0")
-       # Replace current script with updated script
-       rm "$SCRIPT_PATH"
-       mv /tmp/$SCRIPT_NAME "$SCRIPT_PATH"
-       chmod +x "$SCRIPT_PATH"
-       log "INFO" "The script has been updated. It will now restart ..."
-       sleep 3
-       exec "$SCRIPT_PATH" "$@"
+        log "WARNING" "A new version of the script is available: $SCRIPT_VERSION_NEW"
+        log "INFO" "Updating the script ..."
+        wget -qO /tmp/$SCRIPT_NAME "$UPDATE_URL"
+        # Get current script path
+        SCRIPT_PATH=$(readlink -f "$0")
+        # Replace current script with updated script
+        rm "$SCRIPT_PATH"
+        mv /tmp/$SCRIPT_NAME "$SCRIPT_PATH"
+        chmod +x "$SCRIPT_PATH"
+        log "INFO" "The script has been updated. It will now restart ..."
+        sleep 3
+        exec "$SCRIPT_PATH" "$@"
     else
         log "SUCCESS" "The script is up to date"
     fi
@@ -271,21 +291,21 @@ log() {
 
     # Assign color based on level
     case "$level" in
-        ERROR)
-            level="x"
-            color=$RED
-            ;;
-        WARNING)
-            level="!"
-            color=$YELLOW
-            ;;
-        SUCCESS)
-            level="✓"
-            color=$GREEN
-            ;;
-        INFO)
-            level="→"
-            ;;
+    ERROR)
+        level="x"
+        color=$RED
+        ;;
+    WARNING)
+        level="!"
+        color=$YELLOW
+        ;;
+    SUCCESS)
+        level="✓"
+        color=$GREEN
+        ;;
+    INFO)
+        level="→"
+        ;;
     esac
 
     echo -e "${color}[$timestamp] [$level] $message${INFO}"
@@ -298,17 +318,17 @@ if [ "$1" = "--renew" ]; then
     exit 0
 fi
 
-# Check if --change-ports is used
-if [ "$1" = "--change-ports" ]; then
-    select_ports
-fi
-
+GL_DDNS=0
 invoke_update
 invoke_intro
 preflight_check
-echo -e "\033[93m┌──────────────────────────────────────────────────┐\033[0m"
-echo -e "\033[93m| Are you sure you want to continue? (y/N)         |\033[0m"
-echo -e "\033[93m└──────────────────────────────────────────────────┘\033[0m"
+if [ "$PREFLIGHT" -eq "1" ]; then
+    log "ERROR" "Prerequisites are not met. Exiting"
+    exit 1
+else
+    log "SUCCESS" "Prerequisites are met."
+fi
+log "WARNING" "Are you sure you want to continue? (y/N)"
 read answer
 if [ "$answer" != "${answer#[Yy]}" ]; then
     install_prequisites
