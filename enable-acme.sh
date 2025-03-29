@@ -5,7 +5,7 @@
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
 # Date: 2023-12-27
-SCRIPT_VERSION="2024.11.02.01"
+SCRIPT_VERSION="2025.03.29.01"
 SCRIPT_NAME="enable-acme.sh"
 UPDATE_URL="https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
 #
@@ -221,8 +221,9 @@ install_cronjob() {
     # Create cronjob to renew the certificate
     log "INFO" "Checking if cronjob already exists"
     if crontab -l | grep -q "enable-acme"; then
-        log "WARNING" "Cronjob already exists. Skipping"
-    else
+        log "WARNING" "Cronjob already exists. Removing it."
+        crontab -l | grep -v "enable-acme" | crontab -
+    fi
         log "INFO" "Installing cronjob"
         install_script
         (
@@ -230,7 +231,6 @@ install_cronjob() {
             echo "0 0 * * * /usr/bin/enable-acme --renew "
         ) | crontab -
         log "SUCCESS" "Cronjob installed successfully."
-    fi
 }
 
 install_script() {
