@@ -1,24 +1,88 @@
 #!/bin/sh
-# shellcheck shell=dash
-#
+# shellcheck shell=ash
+# shellcheck disable=SC3036
 # Description: This script enables ACME support on GL.iNet routers
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
-# Date: 2023-12-27
-SCRIPT_VERSION="2025.03.29.01"
+SCRIPT_VERSION="2025.11.28.01"
 SCRIPT_NAME="enable-acme.sh"
 UPDATE_URL="https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
 #
-# Usage: ./enable-acme.sh [--renew]
-# Warning: This script might potentially harm your router. Use it at your own risk.
-#
 # Variables
+FORCE=0
+RENEW=0
+SHOW_LOG=0
+ASCII_MODE=0
+USER_WANTS_PERSISTENCE=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 INFO='\033[0m' # No Color
 
 # Functions
+invoke_intro() {
+    echo "============================================================"
+    echo ""
+    echo "  OpenWrt/GL.iNet ACME Certificate Manager by Admon"
+    echo "  Version: $SCRIPT_VERSION"
+    echo ""
+    echo "============================================================"
+    echo ""
+    echo "  WARNING: THIS SCRIPT MIGHT HARM YOUR ROUTER!"
+    echo "  Use at your own risk. Only proceed if you know"
+    echo "  what you're doing."
+    echo ""
+    echo "============================================================"
+    echo ""
+    echo "  Support this project:"
+    echo "    - GitHub: github.com/sponsors/admonstrator"
+    echo "    - Ko-fi: ko-fi.com/admon"
+    echo "    - Buy Me a Coffee: buymeacoffee.com/admon"
+    echo ""
+    echo "============================================================"
+    echo ""
+}
+
+collect_user_preferences() {
+    log "INFO" "Collecting user preferences before starting the ACME setup"
+    echo ""
+
+    # Ask about persistence
+    if [ "$FORCE" -eq 1 ]; then
+        USER_WANTS_PERSISTENCE="y"
+        log "INFO" "--force flag is used. Installation will be made permanent"
+    else
+        echo "┌────────────────────────────────────────────────────────────────────────────────┐"
+        echo "| Make Installation Permanent                                                    |"
+        echo "| This will make your ACME configuration persistent over firmware upgrades.      |"
+        echo "| The certificate files and nginx configuration will be preserved.               |"
+        echo "└────────────────────────────────────────────────────────────────────────────────┘"
+        printf "> \033[36mDo you want to make the installation permanent?\033[0m (y/N) "
+        read -r USER_WANTS_PERSISTENCE
+        USER_WANTS_PERSISTENCE=$(echo "$USER_WANTS_PERSISTENCE" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')
+        echo ""
+    fi
+
+    # Final confirmation unless --force is used
+    if [ "$FORCE" -eq 0 ]; then
+        printf "\033[93m┌──────────────────────────────────────────────────┐\033[0m\n"
+        printf "\033[93m| Are you sure you want to continue? (y/N)         |\033[0m\n"
+        printf "\033[93m└──────────────────────────────────────────────────┘\033[0m\n"
+        read -r answer
+        answer_lower=$(echo "$answer" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')
+        if [ "$answer_lower" != "${answer_lower#[y]}" ]; then
+            log "INFO" "Starting ACME setup process..."
+            echo ""
+        else
+            log "SUCCESS" "Ok, see you next time!"
+            exit 0
+        fi
+    else
+        log "WARNING" "--force flag is used. Continuing without final confirmation"
+        echo ""
+    fi
+}
+
 create_acme_config() {
     # Delete old ACME configuration file
     log "INFO" "Deleting old ACME configuration file for $DDNS_DOMAIN_PREFIX"
@@ -73,18 +137,23 @@ open_firewall() {
 }
 
 preflight_check() {
-    FIRMWARE_VERSION=$(cut -c1 </etc/glversion)
     PREFLIGHT=0
     log "INFO" "Checking if prerequisites are met"
-
-    if [ "${FIRMWARE_VERSION}" -lt 4 ]; then
-        log "ERROR" "This script only works on firmware version 4 or higher."
-        PREFLIGHT=1
+    
+    # Check if this is a GL.iNet router
+    if [ -f "/etc/glversion" ]; then
+        FIRMWARE_VERSION=$(cut -c1 </etc/glversion)
+        if [ "${FIRMWARE_VERSION}" -lt 4 ]; then
+            log "ERROR" "This script only works on GL.iNet firmware version 4 or higher."
+            PREFLIGHT=1
+        else
+            log "SUCCESS" "GL.iNet firmware version: $FIRMWARE_VERSION"
+        fi
     else
-        log "SUCCESS" "Firmware version: $FIRMWARE_VERSION"
+        log "SUCCESS" "OpenWrt system detected"
     fi
     # Check if public IP address is available
-    PUBLIC_IP=$(sudo -g nonevpn curl -4 -s https://api.ipify.org)
+    PUBLIC_IP=$(sudo -g nonevpn curl -4 -s https://api.ipify.org 2>/dev/null || curl -4 -s https://api.ipify.org)
     if [ -z "$PUBLIC_IP" ]; then
         log "ERROR" "Could not get public IP address. Please check your internet connection."
         PREFLIGHT=1
@@ -130,18 +199,7 @@ preflight_check() {
     fi
 }
 
-invoke_intro() {
-    log "INFO" "GL.iNet router script by Admon 🦭 for the GL.iNet community"
-    log "INFO" "Version: $SCRIPT_VERSION"
-    log "WARNING" "WARNING: THIS SCRIPT MIGHT POTENTIALLY HARM YOUR ROUTER!"
-    log "WARNING" "It's only recommended to use this script if you know what you're doing."
-    log "INFO" "This script will enable ACME support on your router."
-    log "INFO" ""
-    log "INFO" "Prerequisites:"
-    log "INFO" "1. You need to have the GL DDNS service enabled."
-    log "INFO" "2. The router needs to have a public IPv4 address."
-    log "INFO" "────"
-}
+
 
 install_prequisites() {
     log "INFO" "Installing luci-app-acme"
@@ -195,24 +253,27 @@ get_acme_cert() {
 invoke_outro() {
     if [ "$FAIL" -eq 1 ]; then
         log "ERROR" "The ACME certificate was not installed successfully."
-        log "ERROR" "Please report any issues on the GL.iNET forum or inside the scripts repository."
-        log "ERROR" "You can find the log file by executing logread"
+        log "ERROR" "Please report any issues on the GL.iNET forum or GitHub repository."
+        log "ERROR" "You can find the log file by executing: logread"
         exit 1
     else
         # Install cronjob
         install_cronjob
         log "SUCCESS" "The ACME certificate was installed successfully."
         log "SUCCESS" "You can now access your router via HTTPS."
-        log "SUCCESS" "Please report any issues on the GL.iNET forum."
-        log "SUCCESS" ""
-        log "SUCCESS" "You can find the certificate files in /etc/acme/$DDNS_DOMAIN/"
-        log "SUCCESS" "The certificate files are:"
-        log "SUCCESS" "  /etc/acme/$DDNS_DOMAIN/fullchain.cer"
-        log "SUCCESS" "  /etc/acme/$DDNS_DOMAIN/$DDNS_DOMAIN.key"
-        log "SUCCESS" ""
-        log "SUCCESS" "The certificate will expire after 90 days."
-        log "SUCCESS" "The cronjob to renew the certificate is already installed."
-        log "SUCCESS" "Renewal will happen automatically."
+        echo ""
+        log "INFO" "Certificate files location: /etc/acme/$DDNS_DOMAIN/"
+        log "INFO" "  - Certificate: /etc/acme/$DDNS_DOMAIN/fullchain.cer"
+        log "INFO" "  - Private key: /etc/acme/$DDNS_DOMAIN/$DDNS_DOMAIN.key"
+        echo ""
+        log "INFO" "The certificate will expire after 90 days."
+        log "INFO" "Automatic renewal is configured via cron job (daily at 00:00)."
+        echo ""
+        echo ""
+        echo "If you like this script, please consider supporting the project:"
+        echo "  - GitHub: github.com/sponsors/admonstrator"
+        echo "  - Ko-fi: ko-fi.com/admon"
+        echo "  - Buy Me a Coffee: buymeacoffee.com/admon"
         exit 0
     fi
 }
@@ -251,15 +312,22 @@ invoke_renewal() {
 }
 
 make_permanent() {
-    log "INFO" "Modifying /etc/sysupgrade.conf"
-    if ! grep -q "/etc/acme" /etc/sysupgrade.conf; then
-        echo "/etc/acme" >>/etc/sysupgrade.conf
-    fi
+    # Use the pre-collected user preference for persistence
+    if [ "$USER_WANTS_PERSISTENCE" != "${USER_WANTS_PERSISTENCE#[y]}" ]; then
+        log "INFO" "Making installation permanent"
+        log "INFO" "Modifying /etc/sysupgrade.conf"
+        if ! grep -q "/etc/acme" /etc/sysupgrade.conf; then
+            echo "/etc/acme" >>/etc/sysupgrade.conf
+        fi
 
-    if ! grep -q "/etc/nginx/conf.d/gl.conf" /etc/sysupgrade.conf; then
-        echo "/etc/nginx/conf.d/gl.conf" >>/etc/sysupgrade.conf
+        if ! grep -q "/etc/nginx/conf.d/gl.conf" /etc/sysupgrade.conf; then
+            echo "/etc/nginx/conf.d/gl.conf" >>/etc/sysupgrade.conf
+        fi
+        log "SUCCESS" "Configuration added to /etc/sysupgrade.conf."
+    else
+        log "INFO" "Installation will not be made permanent"
+        log "INFO" "Configuration will be lost after firmware upgrade"
     fi
-    log "SUCCESS" "Configuration added to /etc/sysupgrade.conf."
 }
 
 invoke_update() {
@@ -286,40 +354,100 @@ invoke_update() {
 log() {
     local level=$1
     local message=$2
-    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
     local color=$INFO # Default to no color
+    local symbol=""
 
-    # Assign color based on level
+    # Assign color and symbol based on level
     case "$level" in
     ERROR)
-        level="x"
         color=$RED
+        if [ "$ASCII_MODE" -eq 1 ]; then
+            symbol="[X] "
+        else
+            symbol="❌ "
+        fi
         ;;
     WARNING)
-        level="!"
         color=$YELLOW
+        if [ "$ASCII_MODE" -eq 1 ]; then
+            symbol="[!] "
+        else
+            symbol="⚠️  "
+        fi
         ;;
     SUCCESS)
-        level="✓"
         color=$GREEN
+        if [ "$ASCII_MODE" -eq 1 ]; then
+            symbol="[OK] "
+        else
+            symbol="✅ "
+        fi
         ;;
     INFO)
-        level="→"
+        if [ "$ASCII_MODE" -eq 1 ]; then
+            symbol="[->] "
+        else
+            symbol="ℹ️  "
+        fi
         ;;
     esac
 
-    echo -e "${color}[$timestamp] [$level] $message${INFO}"
+    # Build output with or without timestamp
+    if [ "$SHOW_LOG" -eq 1 ]; then
+        printf "${color}[$timestamp] $symbol$message${INFO}\n"
+    else
+        printf "${color}$symbol$message${INFO}\n"
+    fi
 }
+
+invoke_help() {
+    printf "\033[1mUsage:\033[0m \033[92m./enable-acme.sh\033[0m [\033[93mOPTIONS\033[0m]\n"
+    printf "\033[1mOptions:\033[0m\n"
+    printf "  \033[93m--renew\033[0m              \033[97mRenew the ACME certificate\033[0m\n"
+    printf "  \033[93m--force\033[0m              \033[97mDo not ask for confirmation\033[0m\n"
+    printf "  \033[93m--log\033[0m                \033[97mShow timestamps in log messages\033[0m\n"
+    printf "  \033[93m--ascii\033[0m              \033[97mUse ASCII characters instead of emojis\033[0m\n"
+    printf "  \033[93m--help\033[0m               \033[97mShow this help\033[0m\n"
+}
+
+# Read arguments
+for arg in "$@"; do
+    case $arg in
+    --help)
+        invoke_help
+        exit 0
+        ;;
+    --force)
+        FORCE=1
+        ;;
+    --renew)
+        RENEW=1
+        ;;
+    --log)
+        SHOW_LOG=1
+        ;;
+    --ascii)
+        ASCII_MODE=1
+        ;;
+    *)
+        echo "Unknown argument: $arg"
+        invoke_help
+        exit 1
+        ;;
+    esac
+done
 
 # Main
 # Check if --renew is used
-if [ "$1" = "--renew" ]; then
+if [ "$RENEW" -eq 1 ]; then
     invoke_renewal
     exit 0
 fi
 
 GL_DDNS=0
-invoke_update
+#invoke_update "$@"
 invoke_intro
 preflight_check
 if [ "$PREFLIGHT" -eq "1" ]; then
@@ -328,19 +456,16 @@ if [ "$PREFLIGHT" -eq "1" ]; then
 else
     log "SUCCESS" "Prerequisites are met."
 fi
-log "WARNING" "Are you sure you want to continue? (y/N)"
-read answer
-if [ "$answer" != "${answer#[Yy]}" ]; then
-    install_prequisites
-    open_firewall 1
-    create_acme_config
-    config_nginx 1
-    get_acme_cert
-    config_nginx 0
-    open_firewall 0
-    make_permanent
-    invoke_outro
-else
-    log "SUCCESS" "Ok, see you next time!"
-    exit 1
-fi
+
+# Collect user preferences before starting
+collect_user_preferences
+
+install_prequisites
+open_firewall 1
+create_acme_config
+config_nginx 1
+get_acme_cert
+config_nginx 0
+open_firewall 0
+make_permanent
+invoke_outro
