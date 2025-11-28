@@ -87,7 +87,60 @@ sh enable-acme.sh
 While certificates renew automatically, you can manually trigger renewal:
 
 ```bash
+sh enable-acme.sh --renew
+```
+
+Or if you installed the script to `/usr/bin`:
+
+```bash
 /usr/bin/enable-acme --renew
+```
+
+---
+
+## 🎛️ Command Line Options
+
+The `enable-acme.sh` script supports the following options:
+
+| Option | Description |
+|--------|-------------|
+| `--renew` | Manually renew the ACME certificate |
+| `--restore` | Restore nginx to factory default configuration |
+| `--force` | Skip all confirmation prompts (for unattended installation) |
+| `--log` | Show timestamps in log messages |
+| `--ascii` | Use ASCII characters instead of emojis |
+| `--help` | Display help message |
+
+### Usage Examples
+
+**Standard Installation:**
+```bash
+sh enable-acme.sh
+```
+
+**Unattended Installation (no prompts):**
+```bash
+sh enable-acme.sh --force
+```
+
+**Renew Certificate:**
+```bash
+sh enable-acme.sh --renew
+```
+
+**Restore to Factory Default:**
+```bash
+sh enable-acme.sh --restore
+```
+
+**ASCII Mode (for older terminals):**
+```bash
+sh enable-acme.sh --ascii
+```
+
+**With Timestamps:**
+```bash
+sh enable-acme.sh --log
 ```
 
 ---
@@ -100,13 +153,28 @@ No manual intervention is required – just let it run!
 
 ---
 
-## ⚙️ Reverting Changes
+## ⚙️ Restoring Factory Configuration
 
-To revert the nginx configuration and restore the original certificates:
+To restore the nginx configuration to factory default and remove ACME certificates, use the built-in restore function:
 
 ```bash
-sed -i '/listen \[::\]:80;/c\listen \[::\]:80;' /etc/nginx/conf.d/gl.conf
-sed -i '/listen \[::\]:80;/c\listen \[::\]:80;' /etc/nginx/conf.d/gl.conf
+sh enable-acme.sh --restore
+```
+
+This will:
+- ✅ Restore HTTP access on port 80
+- ✅ Revert to self-signed certificates
+- ✅ Remove ACME firewall rules
+- ✅ Remove ACME configuration
+- ✅ Remove renewal cron job
+- ✅ Clean up sysupgrade.conf entries
+- ✅ Restart nginx
+
+You can also manually revert the changes with these commands:
+
+```bash
+sed -i 's/#listen 80;/listen 80;/g' /etc/nginx/conf.d/gl.conf
+sed -i 's/#listen \[::\]:80;/listen \[::\]:80;/g' /etc/nginx/conf.d/gl.conf
 sed -i 's|ssl_certificate .*;|ssl_certificate /etc/nginx/nginx.cer;|g' /etc/nginx/conf.d/gl.conf
 sed -i 's|ssl_certificate_key .*;|ssl_certificate_key /etc/nginx/nginx.key;|g' /etc/nginx/conf.d/gl.conf
 /etc/init.d/nginx restart

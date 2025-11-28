@@ -11,6 +11,7 @@ UPDATE_URL="https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/ma
 # Variables
 FORCE=0
 RENEW=0
+RESTORE=0
 SHOW_LOG=0
 ASCII_MODE=0
 USER_WANTS_PERSISTENCE=""
@@ -402,10 +403,81 @@ log() {
     fi
 }
 
+restore_configuration() {
+    printf "\033[31mWARNING: This will restore the nginx configuration to factory default!\033[0m\n"
+    printf "\033[31mThis will remove ACME certificates and revert to self-signed certificates.\033[0m\n"
+    printf "\033[93m┌──────────────────────────────────────────────────┐\033[0m\n"
+    printf "\033[93m| Are you sure you want to continue? (y/N)         |\033[0m\n"
+    printf "\033[93m└──────────────────────────────────────────────────┘\033[0m\n"
+    
+    if [ "$FORCE" -eq 1 ]; then
+        log "WARNING" "--force flag is used. Continuing with restore"
+        answer_restore="y"
+    else
+        read -r answer_restore
+    fi
+    
+    answer_restore_lower=$(echo "$answer_restore" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')
+    if [ "$answer_restore_lower" != "${answer_restore_lower#[y]}" ]; then
+        log "INFO" "Restoring nginx configuration to factory default"
+        
+        # Restore HTTP ports (uncomment them)
+        log "INFO" "Restoring HTTP access on port 80"
+        sed -i 's/#listen 80;/listen 80;/g' /etc/nginx/conf.d/gl.conf
+        sed -i 's/#listen \[::\]:80;/listen \[::\]:80;/g' /etc/nginx/conf.d/gl.conf
+        
+        # Restore original SSL certificates
+        log "INFO" "Restoring original self-signed certificates"
+        sed -i 's|ssl_certificate .*;|ssl_certificate /etc/nginx/nginx.cer;|g' /etc/nginx/conf.d/gl.conf
+        sed -i 's|ssl_certificate_key .*;|ssl_certificate_key /etc/nginx/nginx.key;|g' /etc/nginx/conf.d/gl.conf
+        
+        # Remove firewall rule for ACME
+        log "INFO" "Removing ACME firewall rule"
+        uci delete firewall.acme 2>/dev/null || true
+        uci commit firewall
+        /etc/init.d/firewall restart 2>&1 >/dev/null
+        
+        # Remove ACME configuration
+        log "INFO" "Removing ACME configuration"
+        # Get all ACME cert sections and delete them
+        for cert_section in $(uci show acme | grep "=cert" | cut -d'.' -f2 | cut -d'=' -f1); do
+            uci delete acme.$cert_section 2>/dev/null || true
+        done
+        uci commit acme
+        
+        # Stop ACME service
+        /etc/init.d/acme stop 2>/dev/null || true
+        
+        # Remove cronjob
+        log "INFO" "Removing ACME cronjob"
+        if crontab -l 2>/dev/null | grep -q "enable-acme"; then
+            crontab -l | grep -v "enable-acme" | crontab -
+        fi
+        
+        # Remove from sysupgrade.conf
+        log "INFO" "Removing entries from /etc/sysupgrade.conf"
+        sed -i '/\/etc\/acme/d' /etc/sysupgrade.conf 2>/dev/null || true
+        sed -i '/\/etc\/nginx\/conf.d\/gl.conf/d' /etc/sysupgrade.conf 2>/dev/null || true
+        
+        # Restart nginx
+        log "INFO" "Restarting nginx"
+        /etc/init.d/nginx restart
+        
+        log "SUCCESS" "Nginx configuration has been restored to factory default."
+        log "SUCCESS" "ACME certificates have been removed."
+        log "SUCCESS" "The router is now using self-signed certificates again."
+        exit 0
+    else
+        log "SUCCESS" "Ok, see you next time!"
+        exit 0
+    fi
+}
+
 invoke_help() {
     printf "\033[1mUsage:\033[0m \033[92m./enable-acme.sh\033[0m [\033[93mOPTIONS\033[0m]\n"
     printf "\033[1mOptions:\033[0m\n"
     printf "  \033[93m--renew\033[0m              \033[97mRenew the ACME certificate\033[0m\n"
+    printf "  \033[93m--restore\033[0m            \033[97mRestore nginx to factory default configuration\033[0m\n"
     printf "  \033[93m--force\033[0m              \033[97mDo not ask for confirmation\033[0m\n"
     printf "  \033[93m--log\033[0m                \033[97mShow timestamps in log messages\033[0m\n"
     printf "  \033[93m--ascii\033[0m              \033[97mUse ASCII characters instead of emojis\033[0m\n"
@@ -425,6 +497,9 @@ for arg in "$@"; do
     --renew)
         RENEW=1
         ;;
+    --restore)
+        RESTORE=1
+        ;;
     --log)
         SHOW_LOG=1
         ;;
@@ -440,6 +515,12 @@ for arg in "$@"; do
 done
 
 # Main
+# Check if --restore is used
+if [ "$RESTORE" -eq 1 ]; then
+    restore_configuration
+    exit 0
+fi
+
 # Check if --renew is used
 if [ "$RENEW" -eq 1 ]; then
     invoke_renewal
