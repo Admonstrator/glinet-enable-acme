@@ -6,7 +6,7 @@
 # Author: Admon
 SCRIPT_VERSION="2025.11.28.01"
 SCRIPT_NAME="enable-acme.sh"
-UPDATE_URL="https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh"
+UPDATE_URL="https://get.admon.me/acme-update"
 #
 # Variables
 FORCE=0
@@ -198,9 +198,61 @@ preflight_check() {
     else
         log "SUCCESS" "Public IP matches DDNS IP."
     fi
+    
+    # Check if required files and directories exist
+    log "INFO" "Checking if required files and directories exist"
+    
+    # Check for nginx configuration file
+    if [ ! -f "/etc/nginx/conf.d/gl.conf" ]; then
+        log "ERROR" "Nginx configuration file /etc/nginx/conf.d/gl.conf not found"
+        log "ERROR" "This script requires a GL.iNet router or compatible OpenWrt setup"
+        PREFLIGHT=1
+    else
+        log "SUCCESS" "Nginx configuration file found"
+    fi
+    
+    # Check for nginx init script
+    if [ ! -f "/etc/init.d/nginx" ]; then
+        log "ERROR" "Nginx init script /etc/init.d/nginx not found"
+        PREFLIGHT=1
+    else
+        log "SUCCESS" "Nginx init script found"
+    fi
+    
+    # Check for firewall init script
+    if [ ! -f "/etc/init.d/firewall" ]; then
+        log "WARNING" "Firewall init script not found. Firewall configuration will be skipped"
+    else
+        log "SUCCESS" "Firewall init script found"
+    fi
+    
+    # Check if uci command is available
+    if ! command -v uci >/dev/null 2>&1; then
+        log "ERROR" "UCI command not found. This script requires OpenWrt/GL.iNet firmware"
+        PREFLIGHT=1
+    else
+        log "SUCCESS" "UCI command available"
+    fi
+    
+    # Check if sysupgrade.conf exists (for persistence)
+    if [ ! -f "/etc/sysupgrade.conf" ]; then
+        log "WARNING" "File /etc/sysupgrade.conf not found. Persistence feature will be unavailable"
+    else
+        log "SUCCESS" "Sysupgrade configuration file found"
+    fi
+    
+    # Check if required commands are available
+    local required_commands="wget curl sed grep awk"
+    for cmd in $required_commands; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            log "ERROR" "Required command '$cmd' not found"
+            PREFLIGHT=1
+        fi
+    done
+    if [ "$PREFLIGHT" -eq 0 ]; then
+        log "SUCCESS" "All required commands are available"
+    fi
 }
-
-
 
 install_prequisites() {
     log "INFO" "Installing luci-app-acme"
