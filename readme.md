@@ -39,16 +39,19 @@ Created by [Admon](https://forum.gl-inet.com/u/admon/) for the GL.iNet community
 - ⚙️ **Nginx Configuration** – Automatically configures nginx for HTTPS
 - ✅ **Validation Checks** – Verifies DDNS and public IP match before proceeding
 - 🕐 **Daily Checks** – Renewal cron job runs daily at 00:00
+- 💾 **Persistence** – Optional: Make installation persistent across firmware upgrades
+- 🔧 **Restore Function** – Easy restoration to factory default configuration
+- 🤖 **Unattended Mode** – Support for automated installations with --force flag
 
 ---
 
 ## 📋 Requirements
 
-| Requirement | Details |
-|-------------|---------|
-| **Router** | GL.iNet router with latest firmware version |
-| **Internet** | Working internet connection |
-| **DDNS** | DDNS must be enabled and configured |
+| Requirement  | Details                                                    |
+| ------------ | ---------------------------------------------------------- |
+| **Router**   | GL.iNet router with latest firmware version                |
+| **Internet** | Working internet connection                                |
+| **DDNS**     | DDNS must be enabled and configured                        |
 | **IP Match** | DDNS IP must match router's public IP (verified by script) |
 
 > ⚠️ **Note:** VPN IP addresses are not supported. The certificate is issued for the router's public IP.
@@ -82,6 +85,15 @@ sh enable-acme.sh
 
 5. Follow the on-screen instructions to complete the ACME process
 
+### Persistence Across Firmware Updates
+
+During installation, you'll be asked if you want to make the installation permanent. If you choose "yes", the certificate files and nginx configuration will be preserved during firmware upgrades by adding them to `/etc/sysupgrade.conf`.
+
+This means:
+- ✅ Your ACME certificates survive firmware updates
+- ✅ Nginx configuration is preserved
+- ✅ No need to reinstall after upgrading
+
 ### Manual Certificate Renewal
 
 While certificates renew automatically, you can manually trigger renewal:
@@ -102,14 +114,14 @@ Or if you installed the script to `/usr/bin`:
 
 The `enable-acme.sh` script supports the following options:
 
-| Option | Description |
-|--------|-------------|
-| `--renew` | Manually renew the ACME certificate |
-| `--restore` | Restore nginx to factory default configuration |
-| `--force` | Skip all confirmation prompts (for unattended installation) |
-| `--log` | Show timestamps in log messages |
-| `--ascii` | Use ASCII characters instead of emojis |
-| `--help` | Display help message |
+| Option      | Description                                                 |
+| ----------- | ----------------------------------------------------------- |
+| `--renew`   | Manually renew the ACME certificate                         |
+| `--restore` | Restore nginx to factory default configuration              |
+| `--force`   | Skip all confirmation prompts (for unattended installation) |
+| `--log`     | Show timestamps in log messages                             |
+| `--ascii`   | Use ASCII characters instead of emojis                      |
+| `--help`    | Display help message                                        |
 
 ### Usage Examples
 
