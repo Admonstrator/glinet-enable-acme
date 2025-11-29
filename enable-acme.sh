@@ -4,7 +4,7 @@
 # Description: This script enables ACME support on GL.iNet routers
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
-SCRIPT_VERSION="2025.11.28.01"
+SCRIPT_VERSION="2025.11.28.02"
 SCRIPT_NAME="enable-acme.sh"
 UPDATE_URL="https://get.admon.me/acme-update"
 #
@@ -133,7 +133,7 @@ open_firewall() {
         uci set firewall.acme.enabled='0'
     fi
     log "INFO" "Restarting firewall"
-    /etc/init.d/firewall restart 2 &>/dev/null
+    /etc/init.d/firewall restart >/dev/null 2>&1
     uci commit firewall
 }
 
@@ -487,7 +487,7 @@ restore_configuration() {
         log "INFO" "Removing ACME firewall rule"
         uci delete firewall.acme 2>/dev/null || true
         uci commit firewall
-        /etc/init.d/firewall restart 2>&1 >/dev/null
+        /etc/init.d/firewall restart >/dev/null 2>&1
         
         # Remove ACME configuration
         log "INFO" "Removing ACME configuration"
@@ -498,7 +498,7 @@ restore_configuration() {
         uci commit acme
         
         # Stop ACME service
-        /etc/init.d/acme stop 2>/dev/null || true
+        /etc/init.d/acme stop >/dev/null 2>&1|| true
         
         # Remove cronjob
         log "INFO" "Removing ACME cronjob"
