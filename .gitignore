@@ -1,0 +1,19 @@
+# Test files
+test_*.sh
+
+# Backup files
+*.bak
+*.backup
+
+# macOS
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
