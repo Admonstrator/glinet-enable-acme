@@ -175,7 +175,7 @@ preflight_check() {
         log "SUCCESS" "Detected DDNS domain name: $DDNS_DOMAIN"
     fi
 
-    DDNS_IP=$(nslookup $DDNS_DOMAIN | sed -n '/Address/s/.*: \(.*\)/\1/p' | grep -v ':')
+    DDNS_IP=$(nslookup $DDNS_DOMAIN 1.1.1.1 | sed -n '/Address/s/.*: \(.*\)/\1/p' | grep -v ':')
     if [ -z "$DDNS_IP" ]; then
         log "ERROR" "DDNS IP address not found. Please enable DDNS first."
         PREFLIGHT=1
