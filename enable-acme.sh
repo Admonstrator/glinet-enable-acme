@@ -4,7 +4,7 @@
 # Description: This script enables ACME support on GL.iNet routers
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
-SCRIPT_VERSION="2025.11.28.02"
+SCRIPT_VERSION="2025.12.09.01"
 SCRIPT_NAME="enable-acme.sh"
 UPDATE_URL="https://get.admon.me/acme-update"
 #
@@ -175,7 +175,7 @@ preflight_check() {
         log "SUCCESS" "Detected DDNS domain name: $DDNS_DOMAIN"
     fi
 
-    DDNS_IP=$(nslookup $DDNS_DOMAIN | sed -n '/Address/s/.*: \(.*\)/\1/p' | grep -v ':')
+    DDNS_IP=$(nslookup $DDNS_DOMAIN ns1.glddns.com | tail -n +4 | grep -m1 "Address" | sed 's/.*: //')
     if [ -z "$DDNS_IP" ]; then
         log "ERROR" "DDNS IP address not found. Please enable DDNS first."
         PREFLIGHT=1
