@@ -6,7 +6,7 @@
 
 **Automate SSL/TLS certificates for your GL.iNet router with Let's Encrypt!**
 
-[![License](https://img.shields.io/github/license/Admonstrator/glinet-enable-acme?style=for-the-badge)](LICENSE) [![Stars](https://img.shields.io/badge/stars-17-yellow?style=for-the-badge&logo=github)](https://github.com/Admonstrator/glinet-enable-acme/stargazers)
+[![License](https://img.shields.io/github/license/Admonstrator/glinet-enable-acme?style=for-the-badge)](LICENSE) [![Stars](https://img.shields.io/badge/stars-18-yellow?style=for-the-badge&logo=github)](https://github.com/Admonstrator/glinet-enable-acme/stargazers)
 
 ---
 
@@ -258,6 +258,6 @@ _Last updated: 2025-11-29_
 
 <div align="center">
 
-_Last updated: 2025-12-21_
+_Last updated: 2025-12-28_
 
 </div>
