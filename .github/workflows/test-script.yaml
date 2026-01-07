@@ -235,7 +235,6 @@ jobs:
           functions=(
             "invoke_intro"
             "collect_user_preferences"
-            "create_acme_config"
             "open_firewall"
             "preflight_check"
             "install_prequisites"
