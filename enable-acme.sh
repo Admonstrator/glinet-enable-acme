@@ -5,7 +5,7 @@
 # Thread: https://forum.gl-inet.com/t/script-lets-encrypt-for-gl-inet-router-https-access/41991
 # Author: Admon
 
-SCRIPT_VERSION="2026.01.07.01"
+SCRIPT_VERSION="2026.01.08.01"
 SCRIPT_NAME="enable-acme.sh"
 UPDATE_URL="https://get.admon.me/acme-update"
 REFLECTOR_URL="https://glinet-reflector.admon.me/check?ports=80"
@@ -973,7 +973,7 @@ restore_configuration() {
         # Remove ACME certificates
         log "INFO" "Removing ACME certificates"
         if [ -d "$ACME_CERT_HOME" ]; then
-            rm -rf "$ACME_CERT_HOME"/* 2>/dev/null || true
+            rm -rf "${ACME_CERT_HOME:?}"/* 2>/dev/null || true
         fi
         
         # Remove cronjob and wrapper script
@@ -1066,13 +1066,13 @@ done
 # Handle special operation modes
 if [ "$RESTORE" -eq 1 ] || [ "$RENEW" -eq 1 ] || [ "$REFLECTOR_CHECK" -eq 1 ]; then
     case 1 in
-        "$RESTORE")
+        $RESTORE)
             restore_configuration
             ;;
-        "$RENEW")
+        $RENEW)
             invoke_renewal
             ;;
-        "$REFLECTOR_CHECK")
+        $REFLECTOR_CHECK)
             invoke_intro
             call_reflector
             ;;
