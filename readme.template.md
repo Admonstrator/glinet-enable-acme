@@ -34,27 +34,38 @@ Created by [Admon](https://forum.gl-inet.com/u/admon/) for the GL.iNet community
 ## ✨ Features
 
 - 🔒 **Automatic SSL/TLS Certificates** – Requests and installs Let's Encrypt certificates
-- 🔄 **Auto-Renewal** – Certificates renew automatically via cron job
+- 🔄 **Auto-Renewal** – Certificates renew automatically via cron job with randomized timing
 - 🌐 **DDNS Integration** – Works seamlessly with GL.iNet DDNS
-- ⚙️ **Nginx Configuration** – Automatically configures nginx for HTTPS
+- 🌍 **IPv4/IPv6 Dual-Stack** – Full support for both IPv4 and IPv6 networks
+- 🔌 **Port Reachability Check** – Verifies port 80 accessibility via GL.iNet Community Reflector service
+- ⚙️ **Dual Webserver Support** – Configures both nginx (GL.iNet GUI) and uhttpd (LuCI)
+- 🎯 **Dynamic Port Detection** – Automatically detects uhttpd ports and preserves configuration
+- 🛡️ **Firewall Management** – Intelligent firewall control during certificate issuance and renewal
 - ✅ **Validation Checks** – Verifies DDNS and public IP match before proceeding
-- 🕐 **Daily Checks** – Renewal cron job runs daily at 00:00
-- 💾 **Persistence** – Optional: Make installation persistent across firmware upgrades
+- 🕐 **Random Renewal Time** – Daily renewal checks at random times (Let's Encrypt best practice)
+- 💾 **Optimized Persistence** – Smart persistence strategy avoiding firmware upgrade conflicts
 - 🔧 **Restore Function** – Easy restoration to factory default configuration
 - 🤖 **Unattended Mode** – Support for automated installations with --force flag
+- 🔄 **Modern acme.sh** – Uses acme.sh v3.0.7 directly (no UCI dependencies)
 
 ---
 
 ## 📋 Requirements
 
-| Requirement  | Details                                                    |
-| ------------ | ---------------------------------------------------------- |
-| **Router**   | GL.iNet router with latest firmware version                |
-| **Internet** | Working internet connection                                |
-| **DDNS**     | DDNS must be enabled and configured                        |
-| **IP Match** | DDNS IP must match router's public IP (verified by script) |
+| Requirement      | Details                                                    |
+| ---------------- | ---------------------------------------------------------- |
+| **Router**       | GL.iNet router with firmware v4.x or later                 |
+| **Internet**     | Working internet connection (IPv4 and/or IPv6)             |
+| **DDNS**         | DDNS must be enabled and configured                        |
+| **IP Match**     | DDNS IP must match router's public IP (verified by script) |
+| **Port 80**      | Port 80 must be reachable from the internet                |
+| **Webserver**    | nginx or uhttpd (or both) installed                        |
 
 > ⚠️ **Note:** VPN IP addresses are not supported. The certificate is issued for the router's public IP.
+> 
+> 💡 **IPv6 Support:** The script automatically detects and uses IPv6 if available alongside IPv4.
+> 
+> 🔍 **Port Check:** The script uses GL.iNet Reflector service to verify port 80 accessibility before attempting certificate issuance.
 
 ---
 
@@ -63,10 +74,20 @@ Created by [Admon](https://forum.gl-inet.com/u/admon/) for the GL.iNet community
 Run the script without cloning the repository:
 
 ```bash
-wget -O enable-acme.sh https://raw.githubusercontent.com/Admonstrator/glinet-enable-acme/main/enable-acme.sh && sh enable-acme.sh
+wget -O enable-acme.sh https://get.admon.me/acme-update&& sh enable-acme.sh
 ```
 
 Follow the on-screen instructions to complete the ACME setup.
+
+### Testing Port 80 Reachability
+
+Before installing, you can test if port 80 is reachable from the internet:
+
+```bash
+sh enable-acme.sh --reflector
+```
+
+This performs a comprehensive connectivity check using the GL.iNet Reflector service.
 
 ---
 
@@ -87,12 +108,16 @@ sh enable-acme.sh
 
 ### Persistence Across Firmware Updates
 
-During installation, you'll be asked if you want to make the installation permanent. If you choose "yes", the certificate files and nginx configuration will be preserved during firmware upgrades by adding them to `/etc/sysupgrade.conf`.
+During installation, you'll be asked if you want to make the installation permanent. If you choose "yes", the certificate files and renewal wrapper script will be preserved during firmware upgrades by adding them to `/etc/sysupgrade.conf`.
 
 This means:
+
 - ✅ Your ACME certificates survive firmware updates
-- ✅ Nginx configuration is preserved
-- ✅ No need to reinstall after upgrading
+- ✅ Renewal wrapper script is preserved
+- ✅ Webserver configurations are NOT persisted (to avoid conflicts)
+- ✅ Simply re-run the script after upgrading to reconfigure webservers
+
+> 💡 **Why not persist webserver configs?** GL.iNet firmware updates may change nginx/uhttpd configurations. By not persisting them, we avoid potential conflicts. The script quickly reconfigures webservers using your existing certificates after a firmware upgrade.
 
 ### Manual Certificate Renewal
 
@@ -114,43 +139,50 @@ Or if you installed the script to `/usr/bin`:
 
 The `enable-acme.sh` script supports the following options:
 
-| Option      | Description                                                 |
-| ----------- | ----------------------------------------------------------- |
-| `--renew`   | Manually renew the ACME certificate                         |
-| `--restore` | Restore nginx to factory default configuration              |
-| `--force`   | Skip all confirmation prompts (for unattended installation) |
-| `--log`     | Show timestamps in log messages                             |
-| `--ascii`   | Use ASCII characters instead of emojis                      |
-| `--help`    | Display help message                                        |
+| Option        | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| `--renew`     | Manually renew the ACME certificate                         |
+| `--restore`   | Restore webservers to factory default configuration         |
+| `--reflector` | Test port 80 reachability via GL.iNet Reflector service    |
+| `--force`     | Skip all confirmation prompts (for unattended installation) |
+| `--log`       | Show timestamps in log messages                             |
+| `--ascii`     | Use ASCII characters instead of emojis                      |
+| `--help`      | Display help message                                        |
 
 ### Usage Examples
 
 **Standard Installation:**
+
 ```bash
 sh enable-acme.sh
 ```
 
 **Unattended Installation (no prompts):**
+
 ```bash
 sh enable-acme.sh --force
 ```
 
 **Renew Certificate:**
+
 ```bash
 sh enable-acme.sh --renew
 ```
 
 **Restore to Factory Default:**
+
 ```bash
 sh enable-acme.sh --restore
 ```
 
 **ASCII Mode (for older terminals):**
+
 ```bash
 sh enable-acme.sh --ascii
 ```
 
 **With Timestamps:**
+
 ```bash
 sh enable-acme.sh --log
 ```
@@ -159,7 +191,23 @@ sh enable-acme.sh --log
 
 ## 🔄 Automatic Renewal
 
-The certificate will be renewed automatically by a cron job installed by the script. The cron job checks for renewal every day at 00:00.
+The certificate will be renewed automatically by a cron job installed by the script. The cron job runs at a randomized daily time (following Let's Encrypt best practices to distribute server load).
+
+**How it works:**
+
+1. ⏰ Cron job triggers at random daily time (between 00:00-23:59)
+2. 🛡️ Opens firewall port 80 temporarily
+3. 🌐 Disables HTTP on webservers (preserving original port configuration)
+4. 🔄 Runs acme.sh renewal (only renews if expiring within 60 days)
+5. 🌐 Re-enables HTTP on webservers
+6. 🛡️ Closes firewall port 80
+
+**Dual Webserver Support:**
+
+- nginx (GL.iNet GUI): Automatically detected and managed on port 80/443
+- uhttpd (LuCI): Automatically detected and managed on configured ports (typically 8080/8443)
+- Both webservers receive the same certificate
+- Port configuration is dynamically detected and preserved
 
 No manual intervention is required – just let it run!
 
@@ -167,30 +215,34 @@ No manual intervention is required – just let it run!
 
 ## ⚙️ Restoring Factory Configuration
 
-To restore the nginx configuration to factory default and remove ACME certificates, use the built-in restore function:
+To restore the webserver configurations to factory default and remove ACME certificates, use the built-in restore function:
 
 ```bash
 sh enable-acme.sh --restore
 ```
 
 This will:
-- ✅ Restore HTTP access on port 80
+
+- ✅ Restore HTTP access on all webservers (nginx and/or uhttpd)
 - ✅ Revert to self-signed certificates
+- ✅ Restore original port configurations (dynamically detected)
 - ✅ Remove ACME firewall rules
-- ✅ Remove ACME configuration
-- ✅ Remove renewal cron job
+- ✅ Remove ACME configuration and certificates
+- ✅ Remove renewal wrapper script and cron job
 - ✅ Clean up sysupgrade.conf entries
-- ✅ Restart nginx
+- ✅ Restart all affected webservers
 
-You can also manually revert the changes with these commands:
+---
 
-```bash
-sed -i 's/#listen 80;/listen 80;/g' /etc/nginx/conf.d/gl.conf
-sed -i 's/#listen \[::\]:80;/listen \[::\]:80;/g' /etc/nginx/conf.d/gl.conf
-sed -i 's|ssl_certificate .*;|ssl_certificate /etc/nginx/nginx.cer;|g' /etc/nginx/conf.d/gl.conf
-sed -i 's|ssl_certificate_key .*;|ssl_certificate_key /etc/nginx/nginx.key;|g' /etc/nginx/conf.d/gl.conf
-/etc/init.d/nginx restart
-```
+### GL.iNet Community Reflector Integration
+
+The script uses the GL.iNet Community Reflector service for comprehensive connectivity testing:
+
+**Features:**
+
+- Port 80 reachability verification
+- IPv4 and IPv6 detection
+- Detailed diagnostic feedback
 
 ---
 
@@ -210,6 +262,7 @@ Need assistance or have questions?
 This script is provided **as-is** without any warranty. Use it at your own risk.
 
 It may potentially:
+
 - 🔥 Break your router, computer, or network
 - 🔥 Cause unexpected system behavior
 - 🔥 Even burn down your house (okay, probably not, but you get the idea)
@@ -252,6 +305,6 @@ This project is part of a comprehensive collection of tools for GL.iNet routers.
 
 <div align="center">
 
-_Last updated: 2025-11-29_
+_Last updated: 2026-01-07_
 
 </div>
