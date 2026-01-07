@@ -297,7 +297,12 @@ preflight_check() {
     
     if [ -f "/etc/init.d/uhttpd" ] && [ -f "/etc/config/uhttpd" ]; then
         HAS_UHTTPD=1
+        # Save current HTTP ports for later restoration
+        UHTTPD_PORTS=$(uci get uhttpd.main.listen_http 2>/dev/null | tr ' ' '\n' | grep -v '^$' | tr '\n' ' ' | sed 's/ $//')
         log "SUCCESS" "Detected uhttpd (OpenWrt LuCI)"
+        if [ -n "$UHTTPD_PORTS" ]; then
+            log "INFO" "uhttpd HTTP ports: $UHTTPD_PORTS"
+        fi
     fi
     
     if [ $HAS_NGINX -eq 0 ] && [ $HAS_UHTTPD -eq 0 ]; then
@@ -387,8 +392,16 @@ config_webserver() {
         else
             log "INFO" "Enabling HTTP access on uhttpd"
             uci -q delete uhttpd.main.listen_http
-            uci add_list uhttpd.main.listen_http='0.0.0.0:80'
-            uci add_list uhttpd.main.listen_http='[::]:80'
+            # Restore saved ports or use defaults
+            if [ -n "$UHTTPD_PORTS" ]; then
+                for port in $UHTTPD_PORTS; do
+                    uci add_list uhttpd.main.listen_http="$port"
+                done
+            else
+                # Fallback to common defaults
+                uci add_list uhttpd.main.listen_http='0.0.0.0:8080'
+                uci add_list uhttpd.main.listen_http='[::]:8080'
+            fi
             uci commit uhttpd
         fi
         log "INFO" "Restarting uhttpd"
@@ -510,6 +523,11 @@ if [ -f "/etc/init.d/uhttpd" ] && [ -f "/etc/config/uhttpd" ]; then
     HAS_UHTTPD=1
 fi
 
+# Save uhttpd ports before disabling
+if [ $HAS_UHTTPD -eq 1 ]; then
+    UHTTPD_PORTS=$(uci get uhttpd.main.listen_http 2>/dev/null)
+fi
+
 # Open firewall port 80
 uci set firewall.acme.enabled='1' 2>/dev/null
 uci commit firewall 2>/dev/null
@@ -543,8 +561,16 @@ fi
 
 if [ $HAS_UHTTPD -eq 1 ]; then
     uci -q delete uhttpd.main.listen_http
-    uci add_list uhttpd.main.listen_http='0.0.0.0:80'
-    uci add_list uhttpd.main.listen_http='[::]:80'
+    # Restore saved ports
+    if [ -n "$UHTTPD_PORTS" ]; then
+        for port in $UHTTPD_PORTS; do
+            uci add_list uhttpd.main.listen_http="$port"
+        done
+    else
+        # Fallback to defaults if ports couldn't be saved
+        uci add_list uhttpd.main.listen_http='0.0.0.0:8080'
+        uci add_list uhttpd.main.listen_http='[::]:8080'
+    fi
     uci commit uhttpd 2>/dev/null
     /etc/init.d/uhttpd restart >/dev/null 2>&1
 fi
@@ -608,6 +634,11 @@ invoke_renewal() {
         fi
     fi
     
+    # Save uhttpd ports before disabling
+    if [ $HAS_UHTTPD -eq 1 ]; then
+        UHTTPD_PORTS=$(uci get uhttpd.main.listen_http 2>/dev/null | tr ' ' '\n' | grep -v '^$' | tr '\n' ' ' | sed 's/ $//')
+    fi
+    
     # Open firewall for renewal
     log "INFO" "Opening firewall port 80 for renewal"
     open_firewall 1
@@ -644,8 +675,16 @@ invoke_renewal() {
     if [ $HAS_UHTTPD -eq 1 ]; then
         log "INFO" "Re-enabling HTTP on uhttpd"
         uci -q delete uhttpd.main.listen_http
-        uci add_list uhttpd.main.listen_http='0.0.0.0:80'
-        uci add_list uhttpd.main.listen_http='[::]:80'
+        # Restore saved ports
+        if [ -n "$UHTTPD_PORTS" ]; then
+            for port in $UHTTPD_PORTS; do
+                uci add_list uhttpd.main.listen_http="$port"
+            done
+        else
+            # Fallback to defaults
+            uci add_list uhttpd.main.listen_http='0.0.0.0:8080'
+            uci add_list uhttpd.main.listen_http='[::]:8080'
+        fi
         uci commit uhttpd
         /etc/init.d/uhttpd restart
     fi
@@ -880,6 +919,8 @@ restore_configuration() {
             fi
             if [ -f "/etc/init.d/uhttpd" ] && [ -f "/etc/config/uhttpd" ]; then
                 HAS_UHTTPD=1
+                # Get current ports for restoration
+                UHTTPD_PORTS=$(uci get uhttpd.main.listen_http 2>/dev/null | tr ' ' '\n' | grep -v '^$' | tr '\n' ' ' | sed 's/ $//')
                 log "INFO" "Detected uhttpd"
             fi
             
@@ -902,10 +943,18 @@ restore_configuration() {
         fi
         
         if [ $HAS_UHTTPD -eq 1 ]; then
-            log "INFO" "Restoring HTTP access on uhttpd port 80"
+            log "INFO" "Restoring HTTP access on uhttpd"
             uci -q delete uhttpd.main.listen_http
-            uci add_list uhttpd.main.listen_http='0.0.0.0:80'
-            uci add_list uhttpd.main.listen_http='[::]:80'
+            # Restore to saved ports or use defaults
+            if [ -n "$UHTTPD_PORTS" ]; then
+                for port in $UHTTPD_PORTS; do
+                    uci add_list uhttpd.main.listen_http="$port"
+                done
+            else
+                # Fallback to common defaults
+                uci add_list uhttpd.main.listen_http='0.0.0.0:8080'
+                uci add_list uhttpd.main.listen_http='[::]:8080'
+            fi
             
             log "INFO" "Restoring original self-signed certificates for uhttpd"
             if [ -f "/etc/uhttpd.crt" ]; then
