@@ -301,16 +301,6 @@ This project is part of a comprehensive collection of tools for GL.iNet routers.
 
 ⭐ If you find this useful, please star the repository!
 
-</div>
-
-<div align="center">
-
-_Last updated: 2026-01-07_
-
-</div>
-
-<div align="center">
-
 _Last updated: 2026-01-07_
 
 </div>
