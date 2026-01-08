@@ -74,7 +74,7 @@ Created by [Admon](https://forum.gl-inet.com/u/admon/) for the GL.iNet community
 Run the script without cloning the repository:
 
 ```bash
-wget -O enable-acme.sh https://get.admon.me/acme-update&& sh enable-acme.sh
+wget -O enable-acme.sh https://get.admon.me/acme-update && sh enable-acme.sh
 ```
 
 Follow the on-screen instructions to complete the ACME setup.
